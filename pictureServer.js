@@ -23,6 +23,7 @@ var express = require('express'); // web server application
 var app = express(); // webapp
 var http = require('http').Server(app); // connects http library to server
 var io = require('socket.io')(http); // connect websocket library to server
+var Jimp = require("jimp");
 var serverPort = 8000;
 var SerialPort = require('serialport'); // serial library
 var Readline = SerialPort.parsers.Readline; // read serial data as lines
@@ -83,11 +84,34 @@ const parser = new Readline({
   delimiter: '\r\n'
 });
 
+function wait(ms){
+    var start = new Date().getTime();
+    var end = start;
+    while(end < start + ms) {
+	end = new Date().getTime();
+    }
+}
+
 // Read data that is available on the serial port and send it to the websocket
 serial.pipe(parser);
 parser.on('data', function(data) {
   console.log('Data:', data);
   io.emit('server-msg', data);
+    var imageName = new Date().toString().replace(/[&\/\\#,+()$~%.'":*?<>{}\s-]/g, '');
+
+    console.log('making a making a picture at'+ imageName); // Second, the name is logged to the console.
+
+    //Third, the picture is  taken and saved to the `public/`` folder
+    NodeWebcam.capture('public/'+imageName, opts, function( err, data ) {
+	//io.emit('newPicture',(imageName+'.jpg')); 
+    });
+    wait(1000);
+    Jimp.read('public/' + imageName + '.jpg', function (err, lenna) {
+	if (err) throw err;
+	lenna.greyscale()                 // set greyscale
+	     .write('public/' + imageName + '.jpg'); // save
+    })
+	io.emit('newPicture',( imageName+'.jpg'))
 });
 //----------------------------------------------------------------------------//
 
